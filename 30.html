@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Палітра кольорів</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+        }
+        .form-container, .colors-container {
+            margin-bottom: 20px;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+        }
+        .color-box {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            margin: 5px;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Палітра кольорів</h1>
+
+<!-- Форма для додавання кольору -->
+<div class="form-container">
+    <h2>Додати новий колір</h2>
+    <form id="colorForm">
+        <label for="colorName">Назва кольору:</label>
+        <input type="text" id="colorName" name="colorName" required>
+        <br>
+        
+        <label for="colorType">Тип:</label>
+        <select id="colorType" name="colorType">
+            <option value="RGB">RGB</option>
+            <option value="RGBA">RGBA</option>
+            <option value="HEX">HEX</option>
+        </select>
+        <br>
+        
+        <label for="colorCode">Код кольору:</label>
+        <input type="text" id="colorCode" name="colorCode" required>
+        <br>
+        
+        <button type="submit">Зберегти</button>
+    </form>
+    <div id="errorMessages" class="error"></div>
+</div>
+
+<!-- Список кольорів -->
+<div class="colors-container">
+    <h2>Список кольорів</h2>
+    <div id="colorsList">
+        <!-- Колірні блоки будуть додаватися тут -->
+    </div>
+</div>
+
+<script>
+    // Функція для збереження кольорів у cookie
+    function setCookie(name, value, hours) {
+        var expires = "";
+        if (hours) {
+            var date = new Date();
+            date.setTime(date.getTime() + (hours * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    // Функція для отримання кольорів із cookie
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    // Функція для перевірки унікальності назви кольору
+    function isColorNameUnique(name, colors) {
+        return !colors.some(color => color.name.toLowerCase() === name.toLowerCase());
+    }
+
+    // Перевірка формату для коду кольору
+    function validateColorCode(type, code) {
+        if (type === "RGB") {
+            return /^([0-9]{1,3}),\s*([0-9]{1,3}),\s*([0-9]{1,3})$/.test(code) &&
+                code.split(',').every(value => parseInt(value) >= 0 && parseInt(value) <= 255);
+        }
+        if (type === "RGBA") {
+            return /^([0-9]{1,3}),\s*([0-9]{1,3}),\s*([0-9]{1,3}),\s*([0-1](?:\.\d+)?)$/.test(code) &&
+                code.split(',').slice(0, 3).every(value => parseInt(value) >= 0 && parseInt(value) <= 255);
+        }
+        if (type === "HEX") {
+            return /^#[0-9A-Fa-f]{6}$/.test(code);
+        }
+        return false;
+    }
+
+    // Завантажує кольори із cookie
+    function loadColors() {
+        var colors = JSON.parse(getCookie("colors")) || [];
+        displayColors(colors);
+        return colors;
+    }
+
+    // Відображення кольорів у палітрі
+    function displayColors(colors) {
+        var colorsList = $("#colorsList");
+        colorsList.empty();
+        colors.forEach(color => {
+            var colorBox = $('<div class="color-box"></div>').css('background-color', color.code);
+            colorsList.append(colorBox);
+        });
+    }
+
+    $(document).ready(function () {
+        var colors = loadColors();
+
+        // Подія для додавання кольору
+        $("#colorForm").submit(function (event) {
+            event.preventDefault();
+            var name = $("#colorName").val().trim();
+            var type = $("#colorType").val();
+            var code = $("#colorCode").val().trim();
+            var errorMessages = [];
+
+            // Перевірка на унікальність назви
+            if (!name || !/^[A-Za-z]+$/.test(name)) {
+                errorMessages.push("Назва кольору повинна містити тільки літери.");
+            } else if (!isColorNameUnique(name, colors)) {
+                errorMessages.push("Ця назва кольору вже існує.");
+            }
+
+            // Перевірка коду кольору
+            if (!validateColorCode(type, code)) {
+                errorMessages.push("Невірний код кольору.");
+            }
+
+            if (errorMessages.length > 0) {
+                $("#errorMessages").html(errorMessages.join("<br>"));
+                return;
+            }
+
+            // Додаємо новий колір
+            var newColor = { name: name, type: type, code: code };
+            colors.push(newColor);
+
+            // Зберігаємо кольори у cookie
+            setCookie("colors", JSON.stringify(colors), 3);
+
+            // Оновлюємо палітру
+            displayColors(colors);
+
+            // Очищаємо форму
+            $("#colorForm")[0].reset();
+            $("#errorMessages").html('');
+        });
+    });
+</script>
+
+</body>
+</html>
